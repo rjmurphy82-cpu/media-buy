@@ -1,0 +1,6 @@
+{
+  "name": "million-dollar-media-buy",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" }
+}
