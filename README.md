@@ -1,6 +1,6 @@
 # Million Dollar Media Buy
 
-A target marketing game for Hersey Intro to Business. Teams log in on their own Chromebooks, read a client brief for **Basecamp Bouldering**, and split $1,000,000 a year across six customer segments for four years. The teacher console (`/teacher`) runs the game on the projector and reveals results after each year.
+A target marketing game for Hersey Intro to Business. Students join on their Chromebooks by picking their team and typing their names (no passwords), read a client brief for **Basecamp Bouldering**, and split $1,000,000 a year across six customer segments for four years. The teacher console (`/teacher`) runs the game on the projector and reveals results after each year.
 
 Everything runs on Vercel: the pages, the login, and the game data. No other accounts needed.
 
@@ -10,11 +10,11 @@ Everything runs on Vercel: the pages, the login, and the game data. No other acc
 |---|---|
 | `index.html` | Team login and team desk (students use this) |
 | `teacher.html` | Teacher console at `/teacher` (projector) |
-| `js/teams.js` | **Team names** shown on the login screen |
+| `js/teams.js` | **Team names** you can put in a game |
 | `js/model.js` | Business, segments, yearly news, scoring model |
 | `js/game.js` | Screens shared by both pages (brief, results, standings) |
 | `js/student.js`, `js/teacher.js`, `js/api.js` | Page logic |
-| `api/` | Vercel serverless functions: login, live state, team buys, teacher controls |
+| `api/` | Vercel serverless functions: join/login, lobby, live state, team buys, teacher controls |
 | `css/style.css` | Hersey styling |
 | `vercel.json`, `package.json` | Vercel settings |
 
@@ -25,42 +25,42 @@ Create a repository and upload everything in this folder, keeping the `api`, `js
 
 ### 2. Create the Vercel project
 1. In Vercel, click **Add New > Project** and import the repository.
-2. Framework Preset: **Other**. Leave Build Command and Output Directory empty. Click **Deploy**. (The first deploy works, but logins will fail until steps 3 and 4 are done.)
+2. Framework Preset: **Other**. Leave Build Command and Output Directory empty. Click **Deploy**. (The page loads, but the game won't work until steps 3 and 4 are done.)
 
 ### 3. Connect storage
 1. In the project, open **Storage** and click **Create Database**.
 2. Pick **Upstash for Redis** (free tier is plenty) and connect it to this project.
 3. Vercel adds the connection settings automatically (`KV_REST_API_URL` and `KV_REST_API_TOKEN`, or `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; the game reads either). All game data is saved under keys starting with `mdmb:`, so you can reuse the same database as your other class games.
 
-### 4. Add the passwords
-In the project, open **Settings > Environment Variables** and add these three:
+### 4. Set the teacher password
+In the project, open **Settings > Environment Variables** and add one variable:
 
 | Name | Value |
 |---|---|
-| `TEACHER_PASSWORD` | Your teacher console password |
-| `SESSION_SECRET` | Any long random string (keeps logins from being faked). Example: `hersey-mdmb-7Qx2Lp9vR4kz` |
-| `TEAM_PASSWORDS` | One line of JSON matching the ids in `js/teams.js`, for example: `{"teal":"rocket42","navy":"anchor17","plum":"grape88"}` |
+| `TEACHER_PASSWORD` | The password for the teacher console |
 
-Then go to **Deployments**, open the menu on the latest one, and click **Redeploy** so the new settings take effect. Any time you change these variables, redeploy again.
+Then go to **Deployments**, open the **⋯** menu on the latest one, and click **Redeploy** so the setting takes effect.
 
-### 5. Match the team names
-Edit `js/teams.js` so the names and ids match your teams. Every id in that file needs a password in `TEAM_PASSWORDS`. Commit the change and Vercel redeploys on its own.
+Students don't need passwords. They go to the main link, pick their team, and type their names.
+
+### 5. Team names (optional)
+`js/teams.js` lists 12 color teams. When you create a game you check which ones are playing, and only those appear in the students' dropdown. To rename them, edit the file on GitHub and commit; Vercel redeploys on its own.
 
 ### 6. Share it
-- Teams: `https://<project-name>.vercel.app` (post on Schoology)
+- Students: `https://<project-name>.vercel.app` (post on Schoology)
 - You: `https://<project-name>.vercel.app/teacher`
 
 ## Running a class
 
 1. Open `/teacher` and log in. On **Games**, create a game for the period (for example "Period 8"), pick the teams playing, and set the minimum segments (default 3). Creating it makes it the active game.
-2. Teams log in at the main link and read **The Brief**.
+2. Students go to the main link, pick their team, and type their names. The console shows who has joined each team. Teams read **The Brief** while they wait.
 3. Click **Open Year 1 buying**. The yearly news shows on every team's screen. Teams use the + and − buttons to place 10 blocks of $100,000 and submit. They can change their buy until you close it.
 4. The console shows who has submitted (splits stay hidden). Click **Close buying and reveal**. Teams that didn't submit earn $0 for the year.
 5. Talk through the reveal, then open the next year. After Year 4, show the final standings and debrief.
 
 Screens refresh every 2 to 3 seconds, so teams see each change without reloading.
 
-For the next class period, create a new game. Old games stay saved under **Games**, and you can make any of them active again.
+For the next class period, create a new game. Starting a new game sends every Chromebook back to the join screen, so the next class starts fresh. Old games stay saved under **Games**, and you can make any of them active again.
 
 ## Changing the game
 
