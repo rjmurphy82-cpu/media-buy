@@ -1,8 +1,10 @@
-// GET /api/state  -> everything the signed-in page needs. Pages poll this every few seconds.
+// GET /api/state               -> a team's view (needs the team login)
+// GET /api/state?view=teacher  -> the teacher console view (open, no password)
 import { who, getJSON, redis, hgetall, P, ok, fail } from "./_lib.js";
 
 export default async function handler(req, res) {
-  const me = who(req);
+  const teacher = req.query && req.query.view === "teacher";
+  const me = teacher ? { role: "teacher" } : who(req);
   if (!me) return fail(res, 401, "Please log in again.");
   try {
     const activeId = await redis("GET", P + "active");

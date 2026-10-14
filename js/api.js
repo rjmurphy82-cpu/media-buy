@@ -1,6 +1,5 @@
 // Browser side: talks to the Vercel API and polls for live updates.
-// Team and teacher logins are kept separately so one browser can hold both.
-const KEY = location.pathname.includes("teacher") ? "mdmb-teacher-token" : "mdmb-team-token";
+const KEY = "mdmb-team-token";
 export function getToken() { try { return localStorage.getItem(KEY); } catch { return null; } }
 export function setToken(t) { try { t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY); } catch {} }
 
@@ -19,12 +18,12 @@ export async function api(path, data) {
 
 // Calls onState with fresh data every few seconds while the tab is visible.
 // onState only fires when something changed, so screens don't flicker.
-export function poll(onState, onAuthFail, ms = 2500) {
+export function poll(onState, onAuthFail, ms = 2500, path = "state") {
   let last = "", timer = null, stopped = false;
   async function tick() {
     if (stopped) return;
     if (document.visibilityState === "visible") {
-      try { const s = await api("state"); const k = JSON.stringify(s); if (k !== last) { last = k; onState(s); } }
+      try { const s = await api(path); const k = JSON.stringify(s); if (k !== last) { last = k; onState(s); } }
       catch (e) { if (e.status === 401) { stopped = true; onAuthFail(); return; } }
     }
     timer = setTimeout(tick, ms);
@@ -32,6 +31,6 @@ export function poll(onState, onAuthFail, ms = 2500) {
   tick();
   return {
     stop() { stopped = true; clearTimeout(timer); },
-    async now() { try { const s = await api("state"); last = JSON.stringify(s); onState(s); } catch (e) { if (e.status === 401) { stopped = true; onAuthFail(); } } }
+    async now() { try { const s = await api(path); last = JSON.stringify(s); onState(s); } catch (e) { if (e.status === 401) { stopped = true; onAuthFail(); } } }
   };
 }

@@ -4,14 +4,12 @@
 //   open                                     open buying for the current year (or the next year after a reveal)
 //   reveal                                   close buying, score the year, show results
 //   final                                    show final standings after Year 4
-import { who, getJSON, setJSON, redis, hgetall, P, ok, fail, body } from "./_lib.js";
+import { getJSON, setJSON, redis, hgetall, P, ok, fail, body } from "./_lib.js";
 import { YEARS, scoreYear } from "../js/model.js";
 import { TEAMS } from "../js/teams.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return fail(res, 405, "Use POST.");
-  const me = who(req);
-  if (!me || me.role !== "teacher") return fail(res, 401, "Teacher login required.");
   try {
     const b = body(req);
     if (b.action === "create") {

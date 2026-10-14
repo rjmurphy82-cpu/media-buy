@@ -1,5 +1,5 @@
 // Teacher console: create a game per class period, open each year, close buying, reveal results.
-import { api, poll, getToken, setToken } from "./api.js";
+import { api, poll } from "./api.js";
 import { TEAMS, teamName } from "./teams.js";
 import { YEARS, esc, rowState, briefHTML, rulesHTML, newsHTML, resultsHTML, standingsHTML, finalHTML, yearBar } from "./game.js";
 
@@ -7,31 +7,14 @@ const $ = s => document.querySelector(s);
 const S = { view: "control", game: null, games: [], buys: {}, members: {}, confirm: false, busy: false };
 let poller = null;
 
-/* ---------- login ---------- */
-function showLogin(err = "") {
-  if (poller) { poller.stop(); poller = null; }
-  setToken(null);
-  $("#tabs").hidden = true; $("#who").hidden = true; $("#yearbar").innerHTML = "";
-  $("#app").innerHTML = `<form class="login" id="loginForm"><span class="eyebrow">Teacher login</span><h2 style="margin:0">Run the game</h2>
-    <label for="pw">Teacher password<input type="password" id="pw" autocomplete="current-password" required></label>
-    <p class="err" id="err">${esc(err)}</p><button class="btn" type="submit" id="go">Log in</button>
-    <a href="/" class="muted" style="font-size:15px">Team login page</a></form>`;
-  $("#loginForm").addEventListener("submit", async e => {
-    e.preventDefault(); $("#go").disabled = true; $("#err").textContent = "Logging in…";
-    try { const r = await api("login", { role: "teacher", password: $("#pw").value }); setToken(r.token); start(); }
-    catch (er) { $("#err").textContent = er.message; $("#go").disabled = false; }
-  });
-}
-
+/* ---------- start: no teacher login ---------- */
 function start() {
-  $("#tabs").hidden = false; $("#who").hidden = false;
-  $("#who").innerHTML = `<button id="logout">Log out</button>`; $("#logout").onclick = () => showLogin();
-  $("#app").innerHTML = `<p class="muted">Connecting…</p>`;
-  poller = poll(onState, () => showLogin("Your login expired. Log in again."), 2000);
+  $("#tabs").hidden = false;
+  $("#app").innerHTML = `<p class="muted">Connecting\u2026</p>`;
+  poller = poll(onState, () => {}, 2000, "state?view=teacher");
 }
 
 function onState(s) {
-  if (s.role !== "teacher") { showLogin(); return; }
   S.game = s.game; S.games = s.games || []; S.buys = s.buys || {}; S.members = s.members || {};
   if (!S.game && S.view === "control") S.view = "games";
   render();
@@ -106,7 +89,7 @@ function controlHTML() {
 async function act(data) {
   S.busy = true; S.confirm = false; render();
   try { await api("teacher", data); }
-  catch (e) { if (e.status === 401) { showLogin("Your login expired. Log in again."); return; } toast(e.message); }
+  catch (e) { toast(e.message); }
   S.busy = false;
   if (poller) await poller.now(); else render();
   window.scrollTo(0, 0);
@@ -139,4 +122,4 @@ function toast(t) {
   document.body.appendChild(el); setTimeout(() => el.remove(), 5000);
 }
 
-getToken() ? start() : showLogin();
+start();

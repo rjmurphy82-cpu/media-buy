@@ -25,34 +25,24 @@ Create a repository and upload everything in this folder, keeping the `api`, `js
 
 ### 2. Create the Vercel project
 1. In Vercel, click **Add New > Project** and import the repository.
-2. Framework Preset: **Other**. Leave Build Command and Output Directory empty. Click **Deploy**. (The page loads, but the game won't work until steps 3 and 4 are done.)
+2. Framework Preset: **Other**. Leave Build Command and Output Directory empty. Click **Deploy**. (The page loads, but the game won't work until step 3 is done.)
 
 ### 3. Connect storage
 1. In the project, open **Storage** and click **Create Database**.
 2. Pick **Upstash for Redis** (free tier is plenty) and connect it to this project.
 3. Vercel adds the connection settings automatically (`KV_REST_API_URL` and `KV_REST_API_TOKEN`, or `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; the game reads either). All game data is saved under keys starting with `mdmb:`, so you can reuse the same database as your other class games.
+4. Go to **Deployments**, open the **⋯** menu on the latest one, and click **Redeploy** so the connection takes effect.
 
-### 4. Set the teacher password
-In the project, open **Settings > Environment Variables** and add one variable:
-
-| Name | Value |
-|---|---|
-| `TEACHER_PASSWORD` | The password for the teacher console |
-
-Then go to **Deployments**, open the **⋯** menu on the latest one, and click **Redeploy** so the setting takes effect.
-
-Students don't need passwords. They go to the main link, pick their team, and type their names.
-
-### 5. Team names (optional)
+### 4. Team names (optional)
 `js/teams.js` lists 12 color teams. When you create a game you check which ones are playing, and only those appear in the students' dropdown. To rename them, edit the file on GitHub and commit; Vercel redeploys on its own.
 
-### 6. Share it
+### 5. Share it
 - Students: `https://<project-name>.vercel.app` (post on Schoology)
-- You: `https://<project-name>.vercel.app/teacher`
+- You: `https://<project-name>.vercel.app/teacher` (no password, so keep this link to yourself and don't post it)
 
 ## Running a class
 
-1. Open `/teacher` and log in. On **Games**, create a game for the period (for example "Period 8"), pick the teams playing, and set the minimum segments (default 3). Creating it makes it the active game.
+1. Open `/teacher`. On **Games**, create a game for the period (for example "Period 8"), pick the teams playing, and set the minimum segments (default 3). Creating it makes it the active game.
 2. Students go to the main link, pick their team, and type their names. The console shows who has joined each team. Teams read **The Brief** while they wait.
 3. Click **Open Year 1 buying**. The yearly news shows on every team's screen. Teams use the + and − buttons to place 10 blocks of $100,000 and submit. They can change their buy until you close it.
 4. The console shows who has submitted (splits stay hidden). Click **Close buying and reveal**. Teams that didn't submit earn $0 for the year.

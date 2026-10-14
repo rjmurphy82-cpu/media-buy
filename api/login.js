@@ -1,17 +1,10 @@
-// POST /api/login
-//   Team:    { role: "team", team, names: ["Ava", "Marcus"] }   no password, like Bond Desk
-//   Teacher: { role: "teacher", password }
-import { sign, same, activeGame, redis, P, ok, fail, body } from "./_lib.js";
+// POST /api/login  { team, names: ["Ava", "Marcus"] }  -> students join a team, no password
+import { sign, activeGame, redis, P, ok, fail, body } from "./_lib.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return fail(res, 405, "Use POST.");
   try {
     const b = body(req);
-    if (b.role === "teacher") {
-      if (!process.env.TEACHER_PASSWORD) return fail(res, 500, "TEACHER_PASSWORD is not set in Vercel.");
-      if (!same(b.password, process.env.TEACHER_PASSWORD)) return fail(res, 401, "Wrong teacher password.");
-      return ok(res, { token: sign({ role: "teacher" }), role: "teacher" });
-    }
     const game = await activeGame();
     if (!game) return fail(res, 409, "No game is running yet. Wait for your teacher.");
     if (!game.teams.includes(b.team)) return fail(res, 400, "Pick your team.");

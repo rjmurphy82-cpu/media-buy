@@ -23,20 +23,19 @@ export async function hgetall(key) {
 }
 
 /* ---------- login tokens ---------- */
-// SESSION_SECRET is optional; without it the teacher password doubles as the signing key.
-const SECRET = process.env.SESSION_SECRET || (process.env.TEACHER_PASSWORD ? "mdmb:" + process.env.TEACHER_PASSWORD : "");
+// Signs team logins so a browser stays on the team it joined. SESSION_SECRET is optional.
+const SECRET = process.env.SESSION_SECRET || "mdmb-hersey-media-buy";
 const b64 = s => Buffer.from(s).toString("base64url");
 const hmac = s => crypto.createHmac("sha256", SECRET).update(s).digest("base64url");
 
 export function sign(payload, hours = 12) {
-  if (!SECRET) throw new Error("TEACHER_PASSWORD is not set in Vercel.");
   const body = b64(JSON.stringify({ ...payload, exp: Date.now() + hours * 3600e3 }));
   return body + "." + hmac(body);
 }
 export function who(req) {
   const t = (req.headers.authorization || "").replace(/^Bearer /, "");
   const [body, sig] = t.split(".");
-  if (!body || !sig || !SECRET) return null;
+  if (!body || !sig) return null;
   const good = hmac(body);
   if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
   try { const p = JSON.parse(Buffer.from(body, "base64url").toString()); return p.exp > Date.now() ? p : null; } catch { return null; }
