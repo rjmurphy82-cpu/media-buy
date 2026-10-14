@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const game = activeId ? await getJSON("game:" + activeId) : null;
     if (!game) return fail(res, 409, "No game is running.");
     if (me.game && me.game !== game.id) return fail(res, 401, "A new game started. Log in again.");
-    if (!game.teams.includes(me.team)) return fail(res, 403, "Your team isn't in this game.");
+    if (!(await redis("HEXISTS", `${P}teams:${game.id}`, me.team))) return fail(res, 401, "Your team was removed. Join again.");
     if (game.phase !== "open") return fail(res, 409, "Buying is closed.");
     if (!Array.isArray(alloc) || alloc.length !== SEGS.length || alloc.some(n => !Number.isInteger(n) || n < 0 || n > 10)) return fail(res, 400, "That buy isn't valid.");
     const st = rowState(alloc, game.minSeg);

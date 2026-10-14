@@ -1,22 +1,20 @@
 // POST /api/teacher { action, ... }  -> teacher controls
-//   create   { name, minSeg, luck, teams }  new game for a class period, made active
+//   create   { name, minSeg, luck }          new game for a class period, made active (students make the teams)
 //   activate { id }                          switch the active game
 //   open                                     open buying for the current year (or the next year after a reveal)
 //   reveal                                   close buying, score the year, show results
 //   final                                    show final standings after Year 4
-import { getJSON, setJSON, redis, hgetall, P, ok, fail, body } from "./_lib.js";
+//   remove   { team }                         delete a team (duplicates, typos)
+import { getJSON, setJSON, redis, hgetall, withTeams, P, ok, fail, body } from "./_lib.js";
 import { YEARS, scoreYear } from "../js/model.js";
-import { TEAMS } from "../js/teams.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return fail(res, 405, "Use POST.");
   try {
     const b = body(req);
     if (b.action === "create") {
-      const teams = (b.teams || []).filter(id => TEAMS.some(t => t.id === id));
-      if (teams.length < 2) return fail(res, 400, "Pick at least two teams.");
       const id = Date.now().toString(36);
-      const game = { id, name: String(b.name || "Game").slice(0, 30), minSeg: [2, 3, 4].includes(+b.minSeg) ? +b.minSeg : 3, luck: !!b.luck, teams, phase: "lobby", year: 0, results: [], createdAt: Date.now() };
+      const game = { id, name: String(b.name || "Game").slice(0, 30), minSeg: [2, 3, 4].includes(+b.minSeg) ? +b.minSeg : 3, luck: !!b.luck, phase: "lobby", year: 0, results: [], createdAt: Date.now() };
       await setJSON("game:" + id, game);
       const ids = (await getJSON("gameids")) || []; ids.unshift(id); await setJSON("gameids", ids);
       await redis("SET", P + "active", id);
@@ -31,6 +29,10 @@ export default async function handler(req, res) {
     const game = activeId ? await getJSON("game:" + activeId) : null;
     if (!game) return fail(res, 409, "No active game.");
 
+    if (b.action === "remove") {
+      await redis("HDEL", `${P}teams:${game.id}`, String(b.team || ""));
+      return ok(res, { removed: b.team });
+    }
     if (b.action === "open") {
       if (game.phase === "lobby") { game.phase = "open"; game.year = 0; }
       else if (game.phase === "revealed" && game.year < YEARS.length - 1) { game.phase = "open"; game.year += 1; }
@@ -38,7 +40,9 @@ export default async function handler(req, res) {
     } else if (b.action === "reveal") {
       if (game.phase !== "open") return fail(res, 409, "Buying isn't open.");
       const buys = await hgetall(`buys:${game.id}:${game.year}`);
-      game.results[game.year] = scoreYear(game, game.year, buys, game.results[game.year - 1] || null);
+      const live = await withTeams(game);
+      if (!live.teams.length) return fail(res, 409, "No teams have joined yet.");
+      game.results[game.year] = scoreYear(live, game.year, buys, game.results[game.year - 1] || null);
       game.phase = "revealed";
     } else if (b.action === "final") {
       if (game.phase !== "revealed" || game.year < YEARS.length - 1) return fail(res, 409, "Finish Year 4 first.");

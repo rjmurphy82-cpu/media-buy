@@ -1,60 +1,101 @@
-// Team desk: students log in with their team name and team password.
+// Team desk: students make a team from their first names (or join one), then play.
 import { api, poll, getToken, setToken } from "./api.js";
-import { teamName } from "./teams.js";
+import { teamName, setTeamNames } from "./teams.js";
 import { SEGS, CHIPS, CHIP, esc, money, rowState, briefHTML, rulesHTML, newsHTML, resultsHTML, standingsHTML, finalHTML, yearBar } from "./game.js";
 
 const $ = s => document.querySelector(s);
 const S = { team: null, game: null, myBuy: null, draft: null, draftKey: null, view: "desk", saving: false };
 let poller = null;
 
-/* ---------- login: pick your team, type your names ---------- */
-let lobbyTimer = null;
+/* ---------- join: make a team from first names, or join one ---------- */
+let lobbyTimer = null, lobbyGame = null;
 async function showLogin(err = "") {
   if (poller) { poller.stop(); poller = null; }
   setToken(null); S.team = null;
   $("#tabs").hidden = true; $("#who").hidden = true; $("#yearbar").innerHTML = "";
-  let lobby = null;
-  try { lobby = (await api("lobby")).game; } catch (e) { err = err || e.message; }
   clearTimeout(lobbyTimer);
-  if (!lobby) {
-    $("#app").innerHTML = `<div class="login"><span class="eyebrow">Million Dollar Media Buy</span><h2 style="margin:0">Waiting for your teacher</h2><p>No game is running yet. This page will open the login as soon as your teacher starts one.</p>${err ? `<p class="err">${esc(err)}</p>` : ""}</div>`;
+  let lobby = null;
+  try { lobby = await api("lobby"); } catch (e) { err = err || e.message; }
+  if (!lobby || !lobby.game) {
+    lobbyGame = null;
+    $("#app").innerHTML = `<div class="login"><span class="eyebrow">Million Dollar Media Buy</span><h2 style="margin:0">Waiting for your teacher</h2><p>No game is running yet. This page opens the join screen as soon as your teacher starts one.</p>${err ? `<p class="err">${esc(err)}</p>` : ""}</div>`;
     lobbyTimer = setTimeout(() => showLogin(), 4000);
     return;
   }
-  $("#app").innerHTML = `<form class="login" id="loginForm">
-    <span class="eyebrow">${esc(lobby.name)}</span>
-    <h2 style="margin:0">Join your team</h2>
-    <label for="team">Team<select id="team" required><option value="">Pick your team</option>${lobby.teams.map(id => `<option value="${id}">${esc(teamName(id))}</option>`).join("")}</select></label>
-    <div class="stack" style="gap:8px"><span class="eyebrow" style="font-size:14px;color:var(--muted)">Names of everyone at this computer</span>
-      ${[1, 2, 3, 4].map(i => `<input type="text" id="nm${i}" placeholder="${i === 1 ? "Your first and last name" : "Teammate (optional)"}" maxlength="30" autocomplete="off" ${i === 1 ? "required" : ""} aria-label="Name ${i}">`).join("")}
-    </div>
+  lobbyGame = lobby.game.id;
+  const full = lobby.teams.length >= lobby.max;
+  $("#app").innerHTML = `<div class="stack" style="max-width:520px;margin:28px auto;gap:16px">
+    <div><span class="eyebrow">${esc(lobby.game.name)}</span><h2 style="margin:0">Make your team</h2>
+      <p class="muted" style="margin:4px 0 0" id="count">${lobby.teams.length} of ${lobby.max} teams made</p></div>
+    <form class="login" id="newForm" style="margin:0" ${full ? "hidden" : ""}>
+      <span class="eyebrow">New team</span>
+      <p style="margin:0">Type the <b>first name</b> of everyone at this computer. Your names become your team name.</p>
+      ${[1, 2, 3, 4].map(i => `<input type="text" id="nm${i}" placeholder="${i === 1 ? "First name" : "Teammate\u2019s first name (optional)"}" maxlength="14" autocomplete="off" aria-label="First name ${i}">`).join("")}
+      <p class="muted" id="preview" style="margin:0;font-size:15px"></p>
+      <button class="btn" type="submit" id="goNew">Create team</button>
+    </form>
+    <form class="login" id="joinForm" style="margin:0" ${lobby.teams.length ? "" : "hidden"}>
+      <span class="eyebrow">${full ? "All 15 teams are made" : "Teammate already made it?"}</span>
+      <p style="margin:0">Join a team on a different computer.</p>
+      <label for="team">Team<select id="team"><option value="">Pick your team</option>${lobby.teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join("")}</select></label>
+      <label for="jn">Your first name<input type="text" id="jn" maxlength="14" autocomplete="off"></label>
+      <button class="btn ghost" type="submit" id="goJoin">Join team</button>
+    </form>
     <p class="err" id="err">${esc(err)}</p>
-    <button class="btn" type="submit" id="go">Join</button>
-  </form>`;
-  $("#loginForm").addEventListener("submit", async e => {
+  </div>`;
+  const label = () => {
+    const n = [1, 2, 3, 4].map(i => $("#nm" + i).value.trim().split(/\s+/)[0]).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+    $("#preview").textContent = n.length ? "Team name: " + (n.length === 1 ? n[0] : n.length === 2 ? n.join(" & ") : n.slice(0, -1).join(", ") + " & " + n[n.length - 1]) : "";
+  };
+  [1, 2, 3, 4].forEach(i => $("#nm" + i).addEventListener("input", label));
+  $("#newForm").addEventListener("submit", async e => {
     e.preventDefault();
-    const team = $("#team").value;
     const names = [1, 2, 3, 4].map(i => $("#nm" + i).value.trim()).filter(Boolean);
-    if (!team) { $("#err").textContent = "Pick your team first."; return; }
-    if (!names.length) { $("#err").textContent = "Type your name."; return; }
-    $("#go").disabled = true; $("#err").textContent = "Joining\u2026";
-    try { const r = await api("login", { role: "team", team, names }); setToken(r.token); start(); }
-    catch (er) { $("#err").textContent = er.message; $("#go").disabled = false; }
+    if (!names.length) { $("#err").textContent = "Type at least one first name."; return; }
+    $("#goNew").disabled = true; $("#err").textContent = "Creating your team\u2026";
+    try { const r = await api("login", { mode: "new", names }); setToken(r.token); start(); }
+    catch (er) { $("#err").textContent = er.message; $("#goNew").disabled = false; }
   });
+  $("#joinForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const team = $("#team").value, name = $("#jn").value.trim();
+    if (!team) { $("#err").textContent = "Pick your team."; return; }
+    if (!name) { $("#err").textContent = "Type your first name."; return; }
+    $("#goJoin").disabled = true; $("#err").textContent = "Joining\u2026";
+    try { const r = await api("login", { mode: "join", team, name }); setToken(r.token); start(); }
+    catch (er) { $("#err").textContent = er.message; $("#goJoin").disabled = false; }
+  });
+  lobbyTimer = setTimeout(refreshLobby, 4000);
+}
+
+// Keep the team list fresh while students type, without wiping what they typed
+async function refreshLobby() {
+  if (poller || !$("#joinForm")) return;
+  try {
+    const lobby = await api("lobby");
+    if (!lobby.game || lobby.game.id !== lobbyGame) { showLogin(); return; }
+    const sel = $("#team"), keep = sel.value;
+    sel.innerHTML = `<option value="">Pick your team</option>` + lobby.teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join("");
+    sel.value = keep;
+    $("#joinForm").hidden = !lobby.teams.length;
+    $("#newForm").hidden = lobby.teams.length >= lobby.max;
+    $("#count").textContent = `${lobby.teams.length} of ${lobby.max} teams made`;
+  } catch {}
+  lobbyTimer = setTimeout(refreshLobby, 4000);
 }
 
 function start() {
   clearTimeout(lobbyTimer);
   $("#tabs").hidden = false; $("#who").hidden = false;
   $("#app").innerHTML = `<p class="muted">Connecting\u2026</p>`;
-  poller = poll(onState, () => showLogin("Log in again to keep playing."));
+  poller = poll(onState, () => showLogin("Your teacher started a new game or removed your team. Join again."));
 }
 
 function onState(s) {
-  if (s.role !== "team") { showLogin("Log in with your team."); return; }
+  if (s.role !== "team") { showLogin(); return; }
   S.team = s.team; S.game = s.game; S.myBuy = s.myBuy;
-  const roster = (s.roster && s.roster.length ? s.roster : s.names || []);
-  $("#who").innerHTML = `<span>Team <b>${esc(teamName(S.team))}</b>${roster.length ? `<br><span style="text-transform:none;letter-spacing:0;font-family:var(--body);font-size:14px;opacity:.85">${esc(roster.join(", "))}</span>` : ""}</span><button id="logout">Switch team</button>`;
+  setTeamNames(S.game ? S.game.teamNames : {});
+  $("#who").innerHTML = `<span>Team <b>${esc(teamName(S.team))}</b></span><button id="logout">Switch team</button>`;
   $("#logout").onclick = () => showLogin();
   const key = S.game ? S.game.id + ":" + S.game.year : null;
   if (key !== S.draftKey) { S.draft = S.myBuy ? [...S.myBuy] : SEGS.map(() => 0); S.draftKey = key; }
@@ -75,7 +116,6 @@ function render() {
 function deskHTML() {
   const g = S.game;
   if (!g) return `<div class="stack"><div class="banner wait">No game is running yet. Hang tight.</div><div class="panel"><h3>How it works</h3>${rulesHTML(3)}</div></div>`;
-  if (!g.teams.includes(S.team)) return `<div class="banner wait">Team ${esc(teamName(S.team))} isn’t in this class period’s game. Check with your teacher.</div>`;
   const results = g.results || [];
   if (g.phase === "lobby") return `<div class="stack"><div class="banner wait">Your teacher will open Year 1 soon. Read the brief while you wait.</div>
     <div class="grid2"><div class="panel"><h3>How it works</h3>${rulesHTML(g.minSeg)}</div><div class="panel stack" style="gap:10px"><h3>Your client</h3><p>You are the marketing team for <b>Basecamp Bouldering</b>, an indoor climbing gym. Study who its customers are before you spend a dollar.</p><button class="btn" data-view="brief">Read the brief</button></div></div></div>`;

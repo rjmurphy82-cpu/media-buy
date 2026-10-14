@@ -49,6 +49,31 @@ export async function activeGame() {
   return id ? getJSON("game:" + id) : null;
 }
 
+/* ---------- student-made teams ---------- */
+export const MAX_TEAMS = 15;
+// Teams for a game live in one hash: teamId -> { name, members, created }
+export async function teamsOf(gameId) {
+  const all = await hgetall(`teams:${gameId}`);
+  const ids = Object.keys(all).sort((a, b) => all[a].created - all[b].created);
+  const names = {}, members = {};
+  ids.forEach(id => { names[id] = all[id].name; members[id] = all[id].members; });
+  return { ids, names, members, all };
+}
+// Adds the live team list to a game object so pages and scoring can use it
+export async function withTeams(game) {
+  if (!game) return null;
+  const t = await teamsOf(game.id);
+  return { ...game, teams: t.ids, teamNames: t.names, _members: t.members };
+}
+// First names only: "ava lopez" -> "Ava"
+export const firstName = n => { const w = String(n || "").trim().split(/\s+/)[0].replace(/[^\p{L}'-]/gu, "").slice(0, 14); return w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ""; };
+export function teamLabel(members) {
+  const m = members.slice(0, 5);
+  if (m.length <= 1) return m[0] || "Team";
+  if (m.length === 2) return m[0] + " & " + m[1];
+  return m.slice(0, -1).join(", ") + " & " + m[m.length - 1];
+}
+
 /* ---------- responses ---------- */
 export const ok = (res, data) => { res.setHeader("Cache-Control", "no-store"); return res.status(200).json(data); };
 export const fail = (res, code, error) => { res.setHeader("Cache-Control", "no-store"); return res.status(code).json({ error }); };

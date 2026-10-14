@@ -1,6 +1,6 @@
 # Million Dollar Media Buy
 
-A target marketing game for Hersey Intro to Business. Students join on their Chromebooks by picking their team and typing their names (no passwords), read a client brief for **Basecamp Bouldering**, and split $1,000,000 a year across six customer segments for four years. The teacher console (`/teacher`) runs the game on the projector and reveals results after each year.
+A target marketing game for Hersey Intro to Business. Students make their own teams on their Chromebooks by typing their first names (no passwords, up to 15 teams), read a client brief for **Basecamp Bouldering**, and split $1,000,000 a year across six customer segments for four years. The teacher console (`/teacher`) runs the game on the projector and reveals results after each year.
 
 Everything runs on Vercel: the pages, the login, and the game data. No other accounts needed.
 
@@ -10,7 +10,7 @@ Everything runs on Vercel: the pages, the login, and the game data. No other acc
 |---|---|
 | `index.html` | Team login and team desk (students use this) |
 | `teacher.html` | Teacher console at `/teacher` (projector) |
-| `js/teams.js` | **Team names** you can put in a game |
+| `js/teams.js` | Shows the student-made team names on every screen |
 | `js/model.js` | Business, segments, yearly news, scoring model |
 | `js/game.js` | Screens shared by both pages (brief, results, standings) |
 | `js/student.js`, `js/teacher.js`, `js/api.js` | Page logic |
@@ -33,17 +33,14 @@ Create a repository and upload everything in this folder, keeping the `api`, `js
 3. Vercel adds the connection settings automatically (`KV_REST_API_URL` and `KV_REST_API_TOKEN`, or `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; the game reads either). All game data is saved under keys starting with `mdmb:`, so you can reuse the same database as your other class games.
 4. Go to **Deployments**, open the **⋯** menu on the latest one, and click **Redeploy** so the connection takes effect.
 
-### 4. Team names (optional)
-`js/teams.js` lists 12 color teams. When you create a game you check which ones are playing, and only those appear in the students' dropdown. To rename them, edit the file on GitHub and commit; Vercel redeploys on its own.
-
-### 5. Share it
+### 4. Share it
 - Students: `https://<project-name>.vercel.app` (post on Schoology)
 - You: `https://<project-name>.vercel.app/teacher` (no password, so keep this link to yourself and don't post it)
 
 ## Running a class
 
-1. Open `/teacher`. On **Games**, create a game for the period (for example "Period 8"), pick the teams playing, and set the minimum segments (default 3). Creating it makes it the active game.
-2. Students go to the main link, pick their team, and type their names. The console shows who has joined each team. Teams read **The Brief** while they wait.
+1. Open `/teacher`. On **Games**, create a game for the period (for example "Period 8") and set the minimum segments (default 3). Creating it makes it the active game.
+2. Students go to the main link and type the first names of everyone at their computer. Those names become the team name ("Ava, Marcus & Jordan"). A teammate on another computer can pick that team and add their name. Up to 15 teams per game. If a group makes a duplicate team by mistake, click **Remove** on it in the console. Teams read **The Brief** while they wait.
 3. Click **Open Year 1 buying**. The yearly news shows on every team's screen. Teams use the + and − buttons to place 10 blocks of $100,000 and submit. They can change their buy until you close it.
 4. The console shows who has submitted (splits stay hidden). Click **Close buying and reveal**. Teams that didn't submit earn $0 for the year.
 5. Talk through the reveal, then open the next year. After Year 4, show the final standings and debrief.
