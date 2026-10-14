@@ -159,3 +159,16 @@ input[type=password],input[type=email]{font-family:var(--body);border:1.5px soli
 .statusgrid div.done span{color:var(--good)}
 tr.me td{background:#FBF1EB;box-shadow:inset 4px 0 0 var(--orange)}
 .checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px}
+
+/* ---------- self-paced + reports ---------- */
+[hidden]{display:none!important}
+textarea:focus-visible{outline:3px solid var(--orange-lt);outline-offset:2px}
+.report table td{vertical-align:top}
+@media print{
+  header.mast,.noprint,.btn,#tabs{display:none!important}
+  body,html{background:#fff}
+  main{padding:0}
+  .panel{break-inside:avoid;border-color:#ccc}
+  .pagebreak{break-after:page}
+  .reveal{animation:none!important}
+}

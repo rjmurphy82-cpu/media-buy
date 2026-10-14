@@ -1,6 +1,19 @@
 # Million Dollar Media Buy
 
-A target marketing game for Hersey Intro to Business. Students make their own teams on their Chromebooks by typing their first names (no passwords, up to 15 teams), read a client brief for **Basecamp Bouldering**, and split $1,000,000 a year across six customer segments for four years. The teacher console (`/teacher`) runs the game on the projector and reveals results after each year.
+A target marketing game for Hersey Intro to Business. Students make their own teams on their Chromebooks by typing their first names (no passwords, up to 15 teams), read a client brief, and split $1,000,000 a year across six customer segments for four years. There are five companies and two ways to run it:
+
+- **Self-paced:** teams work through the companies on their own, explain each year's plan in a sentence, answer reflection questions, and send you a report. You see every team's progress live and can print the reports.
+- **Live:** you run one company on the projector (`/teacher`) and reveal each year together.
+
+## The five companies
+
+| Company | What it is | The trap | The hidden gem |
+|---|---|---|---|
+| Basecamp Bouldering | Indoor climbing gym | High school teens (parents pay, they rarely return) | Companies booking team events |
+| Pawprint Pantry | Fresh dog food delivery | Teen dog lovers (parents decide) | Empty nesters 55+ |
+| Loop E-Bikes | E-bike subscription | High school teens (must be 18 to rent) | Delivery gig workers |
+| Second Spin | Sneaker resale app | Sustainability shoppers (say yes, rarely buy) | Collectors 25–40 (and teens are the core this time) |
+| Sidekick | Homework help app | 9th–10th graders (stay on the free version) | School districts |
 
 Everything runs on Vercel: the pages, the login, and the game data. No other accounts needed.
 
@@ -11,10 +24,10 @@ Everything runs on Vercel: the pages, the login, and the game data. No other acc
 | `index.html` | Team login and team desk (students use this) |
 | `teacher.html` | Teacher console at `/teacher` (projector) |
 | `js/teams.js` | Shows the student-made team names on every screen |
-| `js/model.js` | Business, segments, yearly news, scoring model |
+| `js/model.js` | The five companies, their segments, yearly news, and the scoring model |
 | `js/game.js` | Screens shared by both pages (brief, results, standings) |
 | `js/student.js`, `js/teacher.js`, `js/api.js` | Page logic |
-| `api/` | Vercel serverless functions: join/login, lobby, live state, team buys, teacher controls |
+| `api/` | Vercel serverless functions: join, lobby, live state, live buys, self-paced play and reports, teacher controls |
 | `css/style.css` | Hersey styling |
 | `vercel.json`, `package.json` | Vercel settings |
 
@@ -39,20 +52,27 @@ Create a repository and upload everything in this folder, keeping the `api`, `js
 
 ## Running a class
 
-1. Open `/teacher`. On **Games**, create a game for the period (for example "Period 8") and set the minimum segments (default 3). Creating it makes it the active game.
-2. Students go to the main link and type the first names of everyone at their computer. Those names become the team name ("Ava, Marcus & Jordan"). A teammate on another computer can pick that team and add their name. Up to 15 teams per game. If a group makes a duplicate team by mistake, click **Remove** on it in the console. Teams read **The Brief** while they wait.
-3. Click **Open Year 1 buying**. The yearly news shows on every team's screen. Teams use the + and − buttons to place 10 blocks of $100,000 and submit. They can change their buy until you close it.
-4. The console shows who has submitted (splits stay hidden). Click **Close buying and reveal**. Teams that didn't submit earn $0 for the year.
-5. Talk through the reveal, then open the next year. After Year 4, show the final standings and debrief.
+### Self-paced (teams work on their own)
+1. Open `/teacher`. On **Games**, name the game (for example "Period 8"), choose **Self-paced**, and check the companies to assign (all five are checked by default). Click **Create and make active**.
+2. Students go to the main link and type the first names of everyone at their computer to make a team (up to 15 teams). Remove duplicates with the **Remove** button.
+3. Click **Start the activity**. Each team picks a company, reads the brief, and plays four years. Every year they place their buy and write at least one sentence explaining it, then see their results right away. After Year 4 they answer three reflection questions.
+4. The Control screen shows every team's progress: percent of the best possible plan for each company, and whether they've sent their report.
+5. Teams click **Send report to teacher** when they finish (they can send an updated one later). Open **Reports** to view any team's full report, print one, or **Print all reports**.
+6. Click **Close the activity** at the end of class. Teams can still see their report but can't make more buys. **Reopen** brings it back.
 
-Screens refresh every 2 to 3 seconds, so teams see each change without reloading.
+### Live (on the projector)
+1. On **Games**, choose **Live**, pick the company, and create the game.
+2. Teams join the same way. Click **Open Year 1 buying**; the yearly news shows on every team's screen. Teams place 10 blocks of $100,000 and submit.
+3. The console shows who has submitted (splits stay hidden). Click **Close buying and reveal**. Teams that didn't submit earn $0 for the year.
+4. Talk through the reveal, then open the next year. After Year 4, show the final standings and debrief.
 
-For the next class period, create a new game. Starting a new game sends every Chromebook back to the join screen, so the next class starts fresh. Old games stay saved under **Games**, and you can make any of them active again.
+Screens refresh every few seconds, so nobody needs to reload. For the next class period, create a new game; starting a new game sends every Chromebook back to the join screen.
 
 ## Changing the game
 
-All content lives in `js/model.js`:
-- `SEGS`: segment names, survey quotes, and hidden scoring values (`cap` = customers you could win, `k` = how fast returns shrink, `val` = yearly spending per customer).
-- `YEARS`: the four news events and how they change each segment.
+All content lives in `js/model.js`, one block per company:
+- `segs`: segment names, survey quotes, and hidden scoring values (`cap` = customers you could win, `k` = how fast returns shrink, `val` = yearly spending per customer).
+- `charts`: the survey numbers on the brief.
+- `years`: the four news events and how they change each segment.
 
-The survey charts on the brief are in `briefHTML()` in `js/game.js`.
+The reflection questions are at the top of `js/game.js`.

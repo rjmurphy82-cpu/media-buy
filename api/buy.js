@@ -1,6 +1,6 @@
 // POST /api/buy { alloc: [6 block counts] }  -> saves this team's buy for the open year
 import { who, getJSON, redis, P, ok, fail, body } from "./_lib.js";
-import { SEGS, rowState } from "../js/model.js";
+import { companyById, rowState } from "../js/model.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return fail(res, 405, "Use POST.");
@@ -13,8 +13,9 @@ export default async function handler(req, res) {
     if (!game) return fail(res, 409, "No game is running.");
     if (me.game && me.game !== game.id) return fail(res, 401, "A new game started. Log in again.");
     if (!(await redis("HEXISTS", `${P}teams:${game.id}`, me.team))) return fail(res, 401, "Your team was removed. Join again.");
+    if (game.mode === "self") return fail(res, 409, "This game is self-paced.");
     if (game.phase !== "open") return fail(res, 409, "Buying is closed.");
-    if (!Array.isArray(alloc) || alloc.length !== SEGS.length || alloc.some(n => !Number.isInteger(n) || n < 0 || n > 10)) return fail(res, 400, "That buy isn't valid.");
+    if (!Array.isArray(alloc) || alloc.length !== companyById(game.company).segs.length || alloc.some(n => !Number.isInteger(n) || n < 0 || n > 10)) return fail(res, 400, "That buy isn't valid.");
     const st = rowState(alloc, game.minSeg);
     if (!st.ok) return fail(res, 400, st.txt);
     await redis("HSET", `${P}buys:${game.id}:${game.year}`, me.team, JSON.stringify(alloc));
