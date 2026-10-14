@@ -44,9 +44,20 @@ export function same(a, b) {
   const x = Buffer.from(String(a ?? "")), y = Buffer.from(String(b ?? ""));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
+// The game students land in. If the teacher hasn't set one up, a self-paced game with
+// all five companies starts on its own, so students can always just log on and play.
 export async function activeGame() {
   const id = await redis("GET", P + "active");
-  return id ? getJSON("game:" + id) : null;
+  if (id) { const g = await getJSON("game:" + id); if (g) return g; }
+  const { COMPANIES } = await import("../js/model.js");
+  const nid = Date.now().toString(36);
+  const game = { id: nid, name: "Open Play", mode: "self", company: COMPANIES[0].id, companies: COMPANIES.map(c => c.id), minSeg: 3, luck: true, phase: "open", year: 0, results: [], createdAt: Date.now() };
+  await setJSON("game:" + nid, game);
+  const won = await redis("SET", P + "active", nid, "NX");
+  if (won !== "OK" && id === null) { const cur = await redis("GET", P + "active"); if (cur && cur !== nid) { const g = await getJSON("game:" + cur); if (g) return g; } }
+  if (won !== "OK") await redis("SET", P + "active", nid); // the old active game was deleted
+  const ids = (await getJSON("gameids")) || []; ids.unshift(nid); await setJSON("gameids", ids);
+  return game;
 }
 
 /* ---------- student-made teams ---------- */

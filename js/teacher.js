@@ -39,7 +39,7 @@ function render() {
 }
 
 const modeText = g => g.mode === "self" ? `Self-paced · ${(g.companies || []).length} companies` : `Live · ${esc(companyById(g.company).name)}`;
-const statusText = g => g.phase === "lobby" ? "Not started" : g.phase === "final" ? (g.mode === "self" ? "Closed" : "Finished") : g.mode === "self" ? "Teams working" : g.phase === "open" ? `Year ${g.year + 1} buying` : `Year ${g.year + 1} results`;
+const statusText = g => g.mode === "self" ? (g.phase === "final" ? "Closed" : "Open") : g.phase === "lobby" ? "Not started" : g.phase === "final" ? "Finished" : g.phase === "open" ? `Year ${g.year + 1} buying` : `Year ${g.year + 1} results`;
 function gameListHTML() {
   return S.games.length ? `<div class="tablewrap"><table><thead><tr><th>Game</th><th>Status</th><th></th></tr></thead><tbody>${S.games.map(g => `<tr><td><b>${esc(g.name)}</b><div class="muted" style="font-size:14px">${modeText(g)} · min ${g.minSeg} segments</div></td><td>${statusText(g)}</td><td class="r">${S.game && g.id === S.game.id ? `<span class="pill ok">Active</span>` : `<button class="btn ghost small" data-activate="${g.id}">Make active</button>`}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No games yet. Create one to start.</p>`;
 }
@@ -122,16 +122,13 @@ function progressTable() {
 
 function selfControlHTML() {
   const g = S.game;
-  if (g.phase === "lobby") return `<div class="stack">
-    <div><span class="eyebrow">${esc(g.name)} · Self-paced · ${g.companies.length} companies</span><h2>Teams are joining</h2><p class="lede">Students go to the main link and type their first names to make a team. Click Start when everyone is in. Teams then work at their own pace.</p></div>
-    <div class="grid2"><div class="panel"><h3>Companies</h3><ol class="rules">${g.companies.map(id => { const c = companyById(id); return `<li><span><b>${esc(c.name)}</b> · ${esc(c.industry)}</span></li>`; }).join("")}</ol></div>${teamsPanel(g, "Start the activity")}</div></div>`;
   const sentCount = g.teams.filter(id => S.progress[id] && S.progress[id].sentAt).length;
   return `<div class="stack">
-    <div><span class="eyebrow">${esc(g.name)} · Self-paced</span><h2>${g.phase === "final" ? "Activity closed" : "Teams are working"}</h2>
+    <div><span class="eyebrow">${esc(g.name)} · Self-paced</span><h2>${g.phase === "final" ? "Activity closed" : g.teams.length ? "Teams are working" : "Waiting for teams"}</h2>
       <p class="muted" style="margin:0">${sentCount} of ${g.teams.length} teams have sent a report. This updates on its own.</p></div>
     <div class="panel">${progressTable()}</div>
-    <div class="row">${g.phase === "open" ? `<button class="btn" data-act="close">Close the activity</button>` : `<button class="btn ghost" data-act="reopen">Reopen</button>`}<button class="btn ghost small" data-view="standings">All reports</button></div>
-    ${g.phase === "open" ? `<p class="muted" style="font-size:14px;margin:0">Closing stops all teams from making more buys. Their reports show what they finished.</p>` : ""}
+    <div class="row">${g.phase !== "final" ? `<button class="btn" data-act="close">Close the activity</button>` : `<button class="btn ghost" data-act="reopen">Reopen</button>`}<button class="btn ghost small" data-view="standings">All reports</button></div>
+    ${g.phase !== "final" ? `<p class="muted" style="font-size:14px;margin:0">Teams can join and start playing any time. Closing stops all teams from making more buys. Their reports show what they finished.</p>` : ""}
   </div>`;
 }
 

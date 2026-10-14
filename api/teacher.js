@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       const companies = (Array.isArray(b.companies) ? b.companies : []).filter(valid);
       const company = valid(b.company) ? b.company : COMPANIES[0].id;
       if (mode === "self" && !companies.length) return fail(res, 400, "Pick at least one company.");
-      const game = { id, name: String(b.name || "Game").slice(0, 30), mode, company, companies: mode === "self" ? companies : [company], minSeg: [2, 3, 4].includes(+b.minSeg) ? +b.minSeg : 3, luck: !!b.luck, phase: "lobby", year: 0, results: [], createdAt: Date.now() };
+      const game = { id, name: String(b.name || "Game").slice(0, 30), mode, company, companies: mode === "self" ? companies : [company], minSeg: [2, 3, 4].includes(+b.minSeg) ? +b.minSeg : 3, luck: !!b.luck, phase: mode === "self" ? "open" : "lobby", year: 0, results: [], createdAt: Date.now() };
       await setJSON("game:" + id, game);
       const ids = (await getJSON("gameids")) || []; ids.unshift(id); await setJSON("gameids", ids);
       await redis("SET", P + "active", id);
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     }
     if (game.mode === "self") {
       // Self-paced: start lets teams work; close locks it
-      if (b.action === "open" && game.phase === "lobby") game.phase = "open";
+      if (b.action === "open" && game.phase !== "open") game.phase = "open";
       else if (b.action === "close" && game.phase === "open") game.phase = "final";
       else if (b.action === "reopen" && game.phase === "final") game.phase = "open";
       else return fail(res, 409, "Can't do that right now.");

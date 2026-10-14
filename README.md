@@ -52,13 +52,15 @@ Create a repository and upload everything in this folder, keeping the `api`, `js
 
 ## Running a class
 
-### Self-paced (teams work on their own)
-1. Open `/teacher`. On **Games**, name the game (for example "Period 8"), choose **Self-paced**, and check the companies to assign (all five are checked by default). Click **Create and make active**.
-2. Students go to the main link and type the first names of everyone at their computer to make a team (up to 15 teams). Remove duplicates with the **Remove** button.
-3. Click **Start the activity**. Each team picks a company, reads the brief, and plays four years. Every year they place their buy and write at least one sentence explaining it, then see their results right away. After Year 4 they answer three reflection questions.
-4. The Control screen shows every team's progress: percent of the best possible plan for each company, and whether they've sent their report.
-5. Teams click **Send report to teacher** when they finish (they can send an updated one later). Open **Reports** to view any team's full report, print one, or **Print all reports**.
-6. Click **Close the activity** at the end of class. Teams can still see their report but can't make more buys. **Reopen** brings it back.
+### Self-paced (teams work on their own, no teacher steps needed)
+Students can just go to the main link and play. If you haven't set anything up, a self-paced game called **Open Play** with all five companies starts on its own the first time someone logs on.
+
+1. Students type the first names of everyone at their computer to make a team (up to 15 teams) and land on a "How to play" screen.
+2. Each team picks a company, reads the brief, and plays four years. Every year they place their buy and write at least one sentence explaining it, then see their results right away. After Year 4 they answer three reflection questions.
+3. Teams click **Send report to teacher** when they finish (they can send an updated one later).
+4. Whenever you want, open `/teacher` to see every team's progress, open **Reports** to view or print any team's report, or **Print all reports**.
+
+Optional: to give each class period its own list of teams and reports, create a game per period on **Games** (choose **Self-paced** and the companies). It opens for students right away. **Close the activity** at the end of class stops more buys; **Reopen** brings it back.
 
 ### Live (on the projector)
 1. On **Games**, choose **Live**, pick the company, and create the game.

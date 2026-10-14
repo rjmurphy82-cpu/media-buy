@@ -5,7 +5,7 @@ import { CHIPS, CHIP, YEAR_COUNT, COMPANIES, companyById, esc, money, rowState, 
 
 const $ = s => document.querySelector(s);
 const S = { team: null, game: null, myBuy: null, prog: null, roster: [], draft: null, draftKey: null, view: "desk", saving: false,
-  co: null, showResult: null, seenBrief: {}, why: {}, reflect: {}, confirmSend: false };
+  co: null, seenRules: false, showResult: null, seenBrief: {}, why: {}, reflect: {}, confirmSend: false };
 let poller = null;
 
 /* ---------- join: make a team from first names, or join one ---------- */
@@ -178,9 +178,8 @@ const spendTable = (co, r) => `<div class="tablewrap"><table><thead><tr><th>Segm
 /* ---------- self-paced mode ---------- */
 function selfDeskHTML() {
   const g = S.game;
-  if (g.phase === "lobby") return `<div class="stack"><div class="banner wait">You’re in! Your teacher will start the activity in a moment.</div><div class="panel"><h3>How it works</h3>${rulesHTML(g.minSeg)}<p style="margin-top:12px">You’ll run marketing for ${g.companies.length} different ${g.companies.length === 1 ? "company" : "companies"}, four years each, at your own pace. Each year, explain your plan in a sentence. When you’re done, send your report to your teacher.</p></div></div>`;
   if (g.phase === "final") return `<div class="stack"><div class="banner wait">Your teacher closed this activity. Here is your report.</div>${reportHTML(g, S.team, S.prog, S.roster)}</div>`;
-  if (!S.co) return pickerHTML();
+  if (!S.co) return (S.seenRules ? "" : rulesIntroHTML()) + pickerHTML();
   const co = companyById(S.co), entry = entryOf(co.id), y = entry.years.length;
   if (S.showResult !== null && entry.years[S.showResult]) return yearResultHTML(co, entry, S.showResult);
   if (y === 0 && !S.seenBrief[co.id]) return `<div class="stack">${backBar()}${briefHTML(co)}<div class="row"><button class="btn" data-startco="${co.id}">Start Year 1</button></div></div>`;
@@ -190,6 +189,15 @@ function selfDeskHTML() {
 }
 
 const backBar = () => `<div><button class="btn ghost small" data-back>← All companies</button></div>`;
+
+// First screen a team sees: the rules, so nobody needs the teacher to explain them
+function rulesIntroHTML() {
+  return `<div class="panel stack" style="gap:10px;margin-bottom:18px;border-top:6px solid var(--orange)"><span class="eyebrow">How to play</span>
+    <h3 style="margin:0">You\u2019re the marketing team</h3>
+    <p style="margin:0">Each company below hired you. You get <b>$1,000,000 a year for four years</b> to spend on the customers most likely to buy. Read the brief, spend the money, explain why, and see how you did.</p>
+    ${rulesHTML(S.game.minSeg)}
+    <div><button class="btn small" id="gotRules">Got it</button></div></div>`;
+}
 
 function pickerHTML() {
   const g = S.game, sum = progressSummary(g, S.prog), sent = S.prog && S.prog.sentAt;
@@ -312,6 +320,7 @@ function bind() {
     const ok = a.every(x => wordCount(x) >= 5);
     $("#saveReflect").disabled = !ok || S.saving; $("#rfHint").textContent = ok ? "" : "5+ words for each answer";
   });
+  const gr = $("#gotRules"); if (gr) gr.onclick = () => { S.seenRules = true; render(); };
   const sr = $("#saveReflect");
   if (sr) sr.onclick = async () => {
     const r = await play({ action: "reflect", company: S.co, answers: S.reflect[S.co] || [] });

@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     if (!game || game.id !== me.game) return fail(res, 401, "A new game started. Join again.");
     if (game.mode !== "self") return fail(res, 409, "This game is teacher-paced.");
     if (!(await redis("HEXISTS", `${P}teams:${game.id}`, me.team))) return fail(res, 401, "Your team was removed. Join again.");
-    if (game.phase !== "open") return fail(res, 409, game.phase === "final" ? "Your teacher closed this activity." : "Your teacher hasn't started yet.");
+    if (game.phase === "final") return fail(res, 409, "Your teacher closed this activity.");
     const key = `${P}prog:${game.id}`;
     const prog = JSON.parse((await redis("HGET", key, me.team)) || '{"companies":{}}');
 
