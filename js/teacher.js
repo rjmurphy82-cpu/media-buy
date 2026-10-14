@@ -6,19 +6,25 @@ import { teamName, setTeamNames } from "./teams.js";
 import { COMPANIES, companyById, YEAR_COUNT, esc, rowState, briefHTML, rulesHTML, newsHTML, resultsHTML, standingsHTML, finalHTML, yearBar, progressSummary, reportHTML } from "./game.js";
 
 const $ = s => document.querySelector(s);
-const S = { view: "control", game: null, games: [], buys: {}, progress: {}, members: {}, max: 15, confirm: false, removing: null, busy: false, briefCo: null, reportTeam: null, printAll: false };
+const S = { which: "class", activeId: null, view: "control", game: null, games: [], buys: {}, progress: {}, members: {}, max: 15, confirm: false, removing: null, busy: false, briefCo: null, reportTeam: null, printAll: false };
 let poller = null;
 
 function start() {
   $("#tabs").hidden = false;
   $("#app").innerHTML = `<p class="muted">Connecting…</p>`;
-  poller = poll(onState, () => {}, 2500, "state?view=teacher");
+  watch();
+}
+// Poll either the class game or Open Play
+function watch() {
+  if (poller) poller.stop();
+  S.game = null;
+  poller = poll(onState, () => {}, 2500, "state?view=teacher" + (S.which === "open" ? "&game=openplay" : ""));
 }
 
 function onState(s) {
-  S.game = s.game; S.games = s.games || []; S.buys = s.buys || {}; S.progress = s.progress || {}; S.members = s.members || {}; S.max = s.max || 15;
+  S.game = s.game; S.games = s.games || []; S.buys = s.buys || {}; S.progress = s.progress || {}; S.members = s.members || {}; S.max = s.max || 15; S.activeId = s.activeId || null;
   setTeamNames(S.game ? S.game.teamNames : {});
-  if (!S.game && S.view === "control") S.view = "games";
+  if (!S.game && S.which === "class" && S.view === "control") S.view = "games";
   const self = S.game && S.game.mode === "self";
   document.querySelector('#tabs [data-view="standings"]').textContent = self ? "Reports" : "Standings";
   render();
@@ -31,17 +37,21 @@ function render() {
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === S.view)));
   $("#yearbar").innerHTML = S.game ? yearBar(S.game) : "";
   const app = $("#app"), g = S.game, self = g && g.mode === "self";
+  const bar = `<div class="row noprint" style="margin-bottom:16px;gap:8px"><span class="eyebrow" style="margin-right:4px">Viewing</span>
+    <button class="btn small ${S.which === "class" ? "" : "ghost"}" data-which="class">Class game</button>
+    <button class="btn small ${S.which === "open" ? "" : "ghost"}" data-which="open">Open Play</button></div>`;
   if (S.view === "brief") app.innerHTML = teacherBriefHTML();
   else if (S.view === "standings") app.innerHTML = !g ? `<p class="muted">No active game.</p>` : self ? reportsHTML() : `<div class="stack"><div><span class="eyebrow">${esc(g.name)}</span><h2>Standings</h2></div><div class="panel">${standingsHTML(g, g.results || [])}</div></div>`;
   else if (S.view === "games" || !g) app.innerHTML = gamesHTML();
   else app.innerHTML = self ? selfControlHTML() : controlHTML();
+  if (!(S.view === "standings" && S.printAll)) app.insertAdjacentHTML("afterbegin", bar);
   bind();
 }
 
 const modeText = g => g.mode === "self" ? `Self-paced · ${(g.companies || []).length} companies` : `Live · ${esc(companyById(g.company).name)}`;
 const statusText = g => g.mode === "self" ? (g.phase === "final" ? "Closed" : "Open") : g.phase === "lobby" ? "Not started" : g.phase === "final" ? "Finished" : g.phase === "open" ? `Year ${g.year + 1} buying` : `Year ${g.year + 1} results`;
 function gameListHTML() {
-  return S.games.length ? `<div class="tablewrap"><table><thead><tr><th>Game</th><th>Status</th><th></th></tr></thead><tbody>${S.games.map(g => `<tr><td><b>${esc(g.name)}</b><div class="muted" style="font-size:14px">${modeText(g)} · min ${g.minSeg} segments</div></td><td>${statusText(g)}</td><td class="r">${S.game && g.id === S.game.id ? `<span class="pill ok">Active</span>` : `<button class="btn ghost small" data-activate="${g.id}">Make active</button>`}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No games yet. Create one to start.</p>`;
+  return S.games.length ? `<div class="tablewrap"><table><thead><tr><th>Game</th><th>Status</th><th></th></tr></thead><tbody>${S.games.map(g => `<tr><td><b>${esc(g.name)}</b><div class="muted" style="font-size:14px">${modeText(g)} · min ${g.minSeg} segments</div></td><td>${statusText(g)}</td><td class="r">${g.id === S.activeId ? `<span class="pill ok">Active</span>` : `<button class="btn ghost small" data-activate="${g.id}">Make active</button>`}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No games yet. Create one to start.</p>`;
 }
 function refreshGameList() { const el = $("#gameList"); if (el) { el.innerHTML = gameListHTML(); bind(); } }
 
@@ -49,7 +59,10 @@ function gamesHTML() {
   return `<div class="stack">
   <div><span class="eyebrow">Class periods</span><h2>Games</h2><p class="lede">Make one game per class period. Teams always join whichever game is active.</p></div>
   <div class="grid2">
-    <form class="panel stack" id="newGame" style="gap:16px"><h3>New game</h3>
+    <div class="stack" style="gap:18px">
+    <div class="panel stack" style="gap:8px;border-top:6px solid var(--orange)"><h3 style="margin:0">Open Play is always on</h3>
+      <p style="margin:0">Students can pick <b>Open Play</b> on the start screen any time and work through all five companies on their own. Switch to <b>Open Play</b> at the top to see their progress and reports. The games below are for class time.</p></div>
+    <form class="panel stack" id="newGame" style="gap:16px"><h3>New class game</h3>
       <div class="opts">
         <label for="gname">Name<input type="text" id="gname" placeholder="Period 8" required maxlength="30"></label>
         <label for="minSeg">Minimum segments<select id="minSeg"><option>2</option><option selected>3</option><option>4</option></select></label>
@@ -64,6 +77,7 @@ function gamesHTML() {
       <p class="muted" style="margin:0">Students make their own teams (up to 15) from their first names when they join.</p>
       <div class="row"><button class="btn" type="submit" id="createBtn">Create and make active</button></div>
     </form>
+    </div>
     <div class="panel"><h3>Saved games</h3><div id="gameList">${gameListHTML()}</div></div>
   </div></div>`;
 }
@@ -115,7 +129,7 @@ function progressTable() {
       return `<tr><td><b>${esc(teamName(id))}</b></td>${sum.stats.map(st => `<td class="r num">${st.finished ? `${st.pct}%` : st.doneYears ? `<span class="muted">Yr ${st.doneYears}/${YEAR_COUNT}</span>` : `<span class="muted">—</span>`}</td>`).join("")}
         <td class="r num" style="font-size:19px">${sum.avg === null ? "—" : sum.avg + "%"}</td>
         <td>${p && p.sentAt ? `<span class="pill ok">Sent</span>` : `<span class="pill idle">Not sent</span>`}</td>
-        <td class="r"><button class="btn ghost small" data-report="${id}">View</button></td></tr>`; }).join("")}
+        <td class="r" style="white-space:nowrap"><button class="btn ghost small" data-report="${id}">View</button> ${S.removing === id ? `<button class="btn small" data-remove="${id}">Confirm remove</button> <button class="btn ghost small" id="keepTeam">Keep</button>` : `<button class="btn ghost small" data-askremove="${id}" title="Remove this team">\u2715</button>`}</td></tr>`; }).join("")}
   </tbody></table></div>
   <p class="muted" style="font-size:14px;margin:8px 0 0">Percent = revenue compared with the best possible plan for the years they played. “Yr 2/4” means they are still working on that company.</p>`;
 }
@@ -145,7 +159,7 @@ function reportsHTML() {
 /* ---------- actions ---------- */
 async function act(data) {
   S.busy = true; S.confirm = false; render();
-  try { await api("teacher", data); }
+  try { await api("teacher", S.which === "open" && !["create", "activate"].includes(data.action) ? { ...data, gameId: "openplay" } : data); }
   catch (e) { toast(e.message); }
   S.busy = false;
   if (poller) await poller.now(); else render();
@@ -153,7 +167,7 @@ async function act(data) {
 }
 
 function bind() {
-  document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { S.view = b.dataset.view; S.confirm = false; S.reportTeam = null; S.printAll = false; render(); window.scrollTo(0, 0); });
+  document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { if (b.dataset.view === "games" && S.which === "open") { S.which = "class"; S.view = "games"; watch(); return; } S.view = b.dataset.view; S.confirm = false; S.reportTeam = null; S.printAll = false; render(); window.scrollTo(0, 0); });
   document.querySelectorAll("[data-activate]").forEach(b => b.onclick = async () => { S.view = "control"; await act({ action: "activate", id: b.dataset.activate }); });
   document.querySelectorAll("[data-act]").forEach(b => b.onclick = () => act({ action: b.dataset.act }));
   document.querySelectorAll("[data-briefco]").forEach(b => b.onclick = () => { S.briefCo = b.dataset.briefco; render(); });
@@ -163,6 +177,7 @@ function bind() {
   const ca = $("#closeAll"); if (ca) ca.onclick = () => { S.printAll = false; render(); };
   const dp = $("#doPrint"); if (dp) dp.onclick = () => window.print();
 
+  document.querySelectorAll("[data-which]").forEach(b => b.onclick = () => { if (S.which === b.dataset.which) return; S.which = b.dataset.which; S.view = "control"; S.reportTeam = null; S.printAll = false; $("#app").innerHTML = `<p class="muted">Loading\u2026</p>`; watch(); });
   const ng = $("#newGame");
   if (ng) {
     const sync = () => { const live = $("#modeLive").checked; $("#selfCos").hidden = live; $("#liveCoWrap").hidden = !live; };

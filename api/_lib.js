@@ -44,21 +44,31 @@ export function same(a, b) {
   const x = Buffer.from(String(a ?? "")), y = Buffer.from(String(b ?? ""));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
-// The game students land in. If the teacher hasn't set one up, a self-paced game with
-// all five companies starts on its own, so students can always just log on and play.
+// The class game: whatever the teacher made active (live or self-paced). Null until the teacher sets one.
 export async function activeGame() {
   const id = await redis("GET", P + "active");
-  if (id) { const g = await getJSON("game:" + id); if (g) return g; }
+  return id ? getJSON("game:" + id) : null;
+}
+
+// Open Play: a permanent self-paced game with all five companies that students can always play
+// on their own. It never needs the teacher, and its reports show up in the teacher console.
+export const OPEN_ID = "openplay";
+export async function openPlayGame() {
+  const g = await getJSON("game:" + OPEN_ID);
+  if (g) return g;
   const { COMPANIES } = await import("../js/model.js");
-  const nid = Date.now().toString(36);
-  const game = { id: nid, name: "Open Play", mode: "self", company: COMPANIES[0].id, companies: COMPANIES.map(c => c.id), minSeg: 3, luck: true, phase: "open", year: 0, results: [], createdAt: Date.now() };
-  await setJSON("game:" + nid, game);
-  const won = await redis("SET", P + "active", nid, "NX");
-  if (won !== "OK" && id === null) { const cur = await redis("GET", P + "active"); if (cur && cur !== nid) { const g = await getJSON("game:" + cur); if (g) return g; } }
-  if (won !== "OK") await redis("SET", P + "active", nid); // the old active game was deleted
-  const ids = (await getJSON("gameids")) || []; ids.unshift(nid); await setJSON("gameids", ids);
+  const game = { id: OPEN_ID, name: "Open Play", mode: "self", company: COMPANIES[0].id, companies: COMPANIES.map(c => c.id), minSeg: 3, luck: true, phase: "open", year: 0, results: [], maxTeams: 90, createdAt: Date.now() };
+  await setJSON("game:" + OPEN_ID, game);
   return game;
 }
+export const gameFor = channel => channel === "open" ? openPlayGame() : activeGame();
+// The game a team's login belongs to, or null if that class game is no longer the active one
+export async function gameForToken(me) {
+  if (me.game === OPEN_ID) return openPlayGame();
+  const g = await activeGame();
+  return g && g.id === me.game ? g : null;
+}
+export const maxTeams = g => g.maxTeams || MAX_TEAMS;
 
 /* ---------- student-made teams ---------- */
 export const MAX_TEAMS = 15;

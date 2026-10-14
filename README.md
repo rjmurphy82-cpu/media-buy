@@ -52,15 +52,16 @@ Create a repository and upload everything in this folder, keeping the `api`, `js
 
 ## Running a class
 
-### Self-paced (teams work on their own, no teacher steps needed)
-Students can just go to the main link and play. If you haven't set anything up, a self-paced game called **Open Play** with all five companies starts on its own the first time someone logs on.
+### The student start screen
+Students go to the main link and pick one of two ways to play:
 
-1. Students type the first names of everyone at their computer to make a team (up to 15 teams) and land on a "How to play" screen.
-2. Each team picks a company, reads the brief, and plays four years. Every year they place their buy and write at least one sentence explaining it, then see their results right away. After Year 4 they answer three reflection questions.
-3. Teams click **Send report to teacher** when they finish (they can send an updated one later).
-4. Whenever you want, open `/teacher` to see every team's progress, open **Reports** to view or print any team's report, or **Print all reports**.
+- **Live in Class:** joins the game you're running from `/teacher`. If no class game is running, they see "Waiting for your teacher."
+- **Open Play:** always open, no setup needed. Teams make a team from their first names, work through all five companies at their own pace, and send you a report. A team can come back later, pick its name from the list, and pick up where it left off.
 
-Optional: to give each class period its own list of teams and reports, create a game per period on **Games** (choose **Self-paced** and the companies). It opens for students right away. **Close the activity** at the end of class stops more buys; **Reopen** brings it back.
+In the teacher console, use the **Class game / Open Play** switch at the top to see either one. Open Play's **Control** and **Reports** screens show every team's progress and reports, and the **✕** button removes junk or duplicate teams.
+
+### A self-paced class game
+On **Games**, choose **Self-paced** and the companies, then create it. It works like Open Play but only for that class period, and you can **Close** it at the end of class.
 
 ### Live (on the projector)
 1. On **Games**, choose **Live**, pick the company, and create the game.

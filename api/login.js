@@ -1,14 +1,15 @@
 // POST /api/login  -> students make or join a team. No passwords.
-//   New team:  { mode: "new",  names: ["Ava", "Marcus"] }   team name becomes "Ava & Marcus"
-//   Join team: { mode: "join", team: "<team id>", name: "Jordan" }
-import { sign, activeGame, teamsOf, firstName, teamLabel, MAX_TEAMS, redis, P, ok, fail, body } from "./_lib.js";
+//   channel "class" (the teacher's game) or "open" (Open Play)
+//   New team:  { channel, mode: "new",  names: ["Ava", "Marcus"] }   team name becomes "Ava & Marcus"
+//   Join team: { channel, mode: "join", team: "<team id>", name: "Jordan" }
+import { sign, gameFor, teamsOf, firstName, teamLabel, maxTeams, redis, P, ok, fail, body } from "./_lib.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return fail(res, 405, "Use POST.");
   try {
     const b = body(req);
-    const game = await activeGame();
-    if (!game) return fail(res, 409, "No game is running yet. Wait for your teacher.");
+    const game = await gameFor(b.channel === "open" ? "open" : "class");
+    if (!game) return fail(res, 409, "No class game is running yet. Wait for your teacher, or pick Open Play.");
     const key = `${P}teams:${game.id}`;
     const { ids, all } = await teamsOf(game.id);
 
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
     const members = [];
     (Array.isArray(b.names) ? b.names : []).map(firstName).filter(Boolean).forEach(n => { if (!members.some(m => m.toLowerCase() === n.toLowerCase())) members.push(n); });
     if (!members.length) return fail(res, 400, "Type at least one first name.");
-    if (ids.length >= MAX_TEAMS) return fail(res, 409, `This game is full (${MAX_TEAMS} teams). Join one of the teams already listed.`);
+    if (ids.length >= maxTeams(game)) return fail(res, 409, `This game is full (${maxTeams(game)} teams). Join one of the teams already listed.`);
     let name = teamLabel(members.slice(0, 5));
     const taken = new Set(ids.map(id => all[id].name.toLowerCase()));
     for (let i = 2; taken.has(name.toLowerCase()); i++) name = teamLabel(members.slice(0, 5)) + " " + i;

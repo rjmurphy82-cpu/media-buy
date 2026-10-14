@@ -2,7 +2,7 @@
 //   { action: "buy",     company, alloc: [6 blocks], why }   place this year's buy, get results right away
 //   { action: "reflect", company, answers: [3 answers] }       finish a company
 //   { action: "send" }                                        send the report to the teacher
-import { who, activeGame, redis, P, ok, fail, body } from "./_lib.js";
+import { who, gameForToken, redis, P, ok, fail, body } from "./_lib.js";
 import { companyById, rowState, scoreOne, wordCount, YEAR_COUNT } from "../js/model.js";
 
 export default async function handler(req, res) {
@@ -11,8 +11,8 @@ export default async function handler(req, res) {
   if (!me || me.role !== "team") return fail(res, 401, "Please join again.");
   try {
     const b = body(req);
-    const game = await activeGame();
-    if (!game || game.id !== me.game) return fail(res, 401, "A new game started. Join again.");
+    const game = await gameForToken(me);
+    if (!game) return fail(res, 401, "Your teacher started a new game. Join again.");
     if (game.mode !== "self") return fail(res, 409, "This game is teacher-paced.");
     if (!(await redis("HEXISTS", `${P}teams:${game.id}`, me.team))) return fail(res, 401, "Your team was removed. Join again.");
     if (game.phase === "final") return fail(res, 409, "Your teacher closed this activity.");

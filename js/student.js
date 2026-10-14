@@ -8,42 +8,77 @@ const S = { team: null, game: null, myBuy: null, prog: null, roster: [], draft: 
   co: null, seenRules: false, showResult: null, seenBrief: {}, why: {}, reflect: {}, confirmSend: false };
 let poller = null;
 
-/* ---------- join: make a team from first names, or join one ---------- */
-let lobbyTimer = null, lobbyGame = null;
-async function showLogin(err = "") {
+/* ---------- start: Live in Class or Open Play ---------- */
+let lobbyTimer = null, lobbyGame = null, channel = null;
+function resetToLogin() {
   if (poller) { poller.stop(); poller = null; }
-  setToken(null); S.team = null;
+  setToken(null); S.team = null; S.co = null; S.showResult = null; S.view = "desk";
   $("#tabs").hidden = true; $("#who").hidden = true; $("#yearbar").innerHTML = "";
   clearTimeout(lobbyTimer);
+}
+
+// The first screen: two ways to play
+async function showLogin(err = "") {
+  resetToLogin(); channel = null;
+  let info = null;
+  try { info = await api("lobby"); } catch (e) { err = err || e.message; }
+  const cg = info && info.classGame;
+  $("#app").innerHTML = `<div class="stack" style="max-width:860px;margin:28px auto;gap:18px">
+    <div><span class="eyebrow">Million Dollar Media Buy</span><h2 style="margin:0">How are you playing today?</h2></div>
+    <div class="grid2">
+      <div class="panel stack" style="gap:10px;border-top:6px solid var(--brown)"><span class="eyebrow">With your class</span><h3 style="margin:0">Live in Class</h3>
+        <p style="margin:0">Join the game your teacher is running right now.</p>
+        <p class="muted" style="margin:0;font-size:15px">${cg ? `Running now: <b>${esc(cg.name)}</b>` : "No class game is running right now."}</p>
+        <div style="margin-top:auto"><button class="btn ${cg ? "" : "ghost"}" data-channel="class">Join class game</button></div></div>
+      <div class="panel stack" style="gap:10px;border-top:6px solid var(--orange)"><span class="eyebrow">On your own</span><h3 style="margin:0">Open Play</h3>
+        <p style="margin:0">Work through five companies at your own pace. When you’re done, send your report to your teacher.</p>
+        <p class="muted" style="margin:0;font-size:15px">Always open. No need to wait for anyone.</p>
+        <div style="margin-top:auto"><button class="btn" data-channel="open">Start Open Play</button></div></div>
+    </div>
+    ${err ? `<p class="err">${esc(err)}</p>` : ""}
+  </div>`;
+  document.querySelectorAll("[data-channel]").forEach(b => b.onclick = () => showJoin(b.dataset.channel));
+  lobbyTimer = setTimeout(() => { if (!channel && !poller) showLogin(); }, 8000);
+}
+
+// Make a team from first names, or join one, in the chosen channel
+async function showJoin(ch, err = "") {
+  resetToLogin(); channel = ch;
   let lobby = null;
-  try { lobby = await api("lobby"); } catch (e) { err = err || e.message; }
+  try { lobby = await api("lobby?channel=" + ch); } catch (e) { err = err || e.message; }
+  const back = `<button class="btn ghost small" id="backStart">← Back</button>`;
   if (!lobby || !lobby.game) {
     lobbyGame = null;
-    $("#app").innerHTML = `<div class="login"><span class="eyebrow">Million Dollar Media Buy</span><h2 style="margin:0">Waiting for your teacher</h2><p>No game is running yet. This page opens the join screen as soon as your teacher starts one.</p>${err ? `<p class="err">${esc(err)}</p>` : ""}</div>`;
-    lobbyTimer = setTimeout(() => showLogin(), 4000);
+    $("#app").innerHTML = `<div class="login">${back}<span class="eyebrow">Live in Class</span><h2 style="margin:0">Waiting for your teacher</h2><p>No class game is running yet. This page opens the join screen as soon as your teacher starts one. Want to play now? Go back and pick Open Play.</p>${err ? `<p class="err">${esc(err)}</p>` : ""}</div>`;
+    $("#backStart").onclick = () => showLogin();
+    lobbyTimer = setTimeout(() => { if (channel === ch) showJoin(ch); }, 4000);
     return;
   }
   lobbyGame = lobby.game.id;
-  const full = lobby.teams.length >= lobby.max;
+  const full = lobby.teams.length >= lobby.max, open = ch === "open";
+  // Open Play can have lots of teams across periods, so show the newest first
+  const list = open ? [...lobby.teams].reverse() : lobby.teams;
   $("#app").innerHTML = `<div class="stack" style="max-width:520px;margin:28px auto;gap:16px">
-    <div><span class="eyebrow">${esc(lobby.game.name)}</span><h2 style="margin:0">Make your team</h2>
-      <p class="muted" style="margin:4px 0 0" id="count">${lobby.teams.length} of ${lobby.max} teams made</p></div>
+    <div>${back}</div>
+    <div><span class="eyebrow">${open ? "Open Play · on your own" : "Live in Class · " + esc(lobby.game.name)}</span><h2 style="margin:0">Make your team</h2>
+      <p class="muted" style="margin:4px 0 0" id="count">${open ? "" : `${lobby.teams.length} of ${lobby.max} teams made`}</p></div>
     <form class="login" id="newForm" style="margin:0" ${full ? "hidden" : ""}>
       <span class="eyebrow">New team</span>
       <p style="margin:0">Type the <b>first name</b> of everyone at this computer. Your names become your team name.</p>
-      ${[1, 2, 3, 4].map(i => `<input type="text" id="nm${i}" placeholder="${i === 1 ? "First name" : "Teammate\u2019s first name (optional)"}" maxlength="14" autocomplete="off" aria-label="First name ${i}">`).join("")}
+      ${[1, 2, 3, 4].map(i => `<input type="text" id="nm${i}" placeholder="${i === 1 ? "First name" : "Teammate’s first name (optional)"}" maxlength="14" autocomplete="off" aria-label="First name ${i}">`).join("")}
       <p class="muted" id="preview" style="margin:0;font-size:15px"></p>
       <button class="btn" type="submit" id="goNew">Create team</button>
     </form>
     <form class="login" id="joinForm" style="margin:0" ${lobby.teams.length ? "" : "hidden"}>
-      <span class="eyebrow">${full ? "All 15 teams are made" : "Teammate already made it?"}</span>
-      <p style="margin:0">Join a team on a different computer.</p>
-      <label for="team">Team<select id="team"><option value="">Pick your team</option>${lobby.teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join("")}</select></label>
+      <span class="eyebrow">${full ? `All ${lobby.max} teams are made` : open ? "Already started? Pick up where you left off" : "Teammate already made it?"}</span>
+      <p style="margin:0">${open ? "Pick your team to keep going, or to join from a different computer." : "Join a team on a different computer."}</p>
+      <label for="team">Team<select id="team"><option value="">Pick your team</option>${list.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join("")}</select></label>
       <label for="jn">Your first name<input type="text" id="jn" maxlength="14" autocomplete="off"></label>
       <button class="btn ghost" type="submit" id="goJoin">Join team</button>
     </form>
     <p class="err" id="err">${esc(err)}</p>
   </div>`;
+  $("#backStart").onclick = () => showLogin();
   const label = () => {
     const n = [1, 2, 3, 4].map(i => $("#nm" + i).value.trim().split(/\s+/)[0]).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1).toLowerCase());
     $("#preview").textContent = n.length ? "Team name: " + (n.length === 1 ? n[0] : n.length === 2 ? n.join(" & ") : n.slice(0, -1).join(", ") + " & " + n[n.length - 1]) : "";
@@ -53,8 +88,8 @@ async function showLogin(err = "") {
     e.preventDefault();
     const names = [1, 2, 3, 4].map(i => $("#nm" + i).value.trim()).filter(Boolean);
     if (!names.length) { $("#err").textContent = "Type at least one first name."; return; }
-    $("#goNew").disabled = true; $("#err").textContent = "Creating your team\u2026";
-    try { const r = await api("login", { mode: "new", names }); setToken(r.token); start(); }
+    $("#goNew").disabled = true; $("#err").textContent = "Creating your team…";
+    try { const r = await api("login", { channel: ch, mode: "new", names }); setToken(r.token); start(); }
     catch (er) { $("#err").textContent = er.message; $("#goNew").disabled = false; }
   });
   $("#joinForm").addEventListener("submit", async e => {
@@ -62,8 +97,8 @@ async function showLogin(err = "") {
     const team = $("#team").value, name = $("#jn").value.trim();
     if (!team) { $("#err").textContent = "Pick your team."; return; }
     if (!name) { $("#err").textContent = "Type your first name."; return; }
-    $("#goJoin").disabled = true; $("#err").textContent = "Joining\u2026";
-    try { const r = await api("login", { mode: "join", team, name }); setToken(r.token); start(); }
+    $("#goJoin").disabled = true; $("#err").textContent = "Joining…";
+    try { const r = await api("login", { channel: ch, mode: "join", team, name }); setToken(r.token); start(); }
     catch (er) { $("#err").textContent = er.message; $("#goJoin").disabled = false; }
   });
   lobbyTimer = setTimeout(refreshLobby, 4000);
@@ -71,16 +106,17 @@ async function showLogin(err = "") {
 
 // Keep the team list fresh while students type, without wiping what they typed
 async function refreshLobby() {
-  if (poller || !$("#joinForm")) return;
+  if (poller || !$("#joinForm") || !channel) return;
   try {
-    const lobby = await api("lobby");
-    if (!lobby.game || lobby.game.id !== lobbyGame) { showLogin(); return; }
+    const lobby = await api("lobby?channel=" + channel);
+    if (!lobby.game || lobby.game.id !== lobbyGame) { showJoin(channel); return; }
+    const list = channel === "open" ? [...lobby.teams].reverse() : lobby.teams;
     const sel = $("#team"), keep = sel.value;
-    sel.innerHTML = `<option value="">Pick your team</option>` + lobby.teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join("");
+    sel.innerHTML = `<option value="">Pick your team</option>` + list.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join("");
     sel.value = keep;
     $("#joinForm").hidden = !lobby.teams.length;
     $("#newForm").hidden = lobby.teams.length >= lobby.max;
-    $("#count").textContent = `${lobby.teams.length} of ${lobby.max} teams made`;
+    if (channel !== "open") $("#count").textContent = `${lobby.teams.length} of ${lobby.max} teams made`;
   } catch {}
   lobbyTimer = setTimeout(refreshLobby, 4000);
 }
@@ -88,15 +124,15 @@ async function refreshLobby() {
 function start() {
   clearTimeout(lobbyTimer);
   $("#tabs").hidden = false; $("#who").hidden = false;
-  $("#app").innerHTML = `<p class="muted">Connecting\u2026</p>`;
-  poller = poll(onState, () => showLogin("Your teacher started a new game or removed your team. Join again."));
+  $("#app").innerHTML = `<p class="muted">Connecting…</p>`;
+  poller = poll(onState, () => showLogin("Your teacher started a new game or removed your team. Pick how you want to play."));
 }
 
 function onState(s) {
   if (s.role !== "team") { showLogin(); return; }
   S.team = s.team; S.game = s.game; S.myBuy = s.myBuy || null; S.prog = s.prog || null; S.roster = s.roster || [];
   setTeamNames(S.game ? S.game.teamNames : {});
-  $("#who").innerHTML = `<span>Team <b>${esc(teamName(S.team))}</b></span><button id="logout">Switch team</button>`;
+  $("#who").innerHTML = `<span>${S.game && S.game.id === "openplay" ? "Open Play \u00b7 " : ""}Team <b>${esc(teamName(S.team))}</b></span><button id="logout">Switch</button>`;
   $("#logout").onclick = () => showLogin();
   const self = S.game && S.game.mode === "self";
   document.querySelector('#tabs [data-view="standings"]').textContent = self ? "My Report" : "Standings";

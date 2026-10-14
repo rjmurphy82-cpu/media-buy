@@ -7,7 +7,8 @@
 //   reveal                                   close buying, score the year, show results
 //   final                                    show final standings after Year 4
 //   remove   { team }                         delete a team (duplicates, typos)
-import { getJSON, setJSON, redis, hgetall, withTeams, P, ok, fail, body } from "./_lib.js";
+//   Add gameId: "openplay" to remove / close / reopen to act on Open Play instead of the class game
+import { getJSON, setJSON, redis, hgetall, withTeams, openPlayGame, OPEN_ID, P, ok, fail, body } from "./_lib.js";
 import { COMPANIES, YEAR_COUNT, scoreYear } from "../js/model.js";
 
 export default async function handler(req, res) {
@@ -33,8 +34,8 @@ export default async function handler(req, res) {
       return ok(res, { active: b.id });
     }
     const activeId = await redis("GET", P + "active");
-    const game = activeId ? await getJSON("game:" + activeId) : null;
-    if (!game) return fail(res, 409, "No active game.");
+    const game = b.gameId === OPEN_ID ? await openPlayGame() : activeId ? await getJSON("game:" + activeId) : null;
+    if (!game) return fail(res, 409, "No class game is running. Create one on Games.");
 
     if (b.action === "remove") {
       await redis("HDEL", `${P}teams:${game.id}`, String(b.team || ""));
